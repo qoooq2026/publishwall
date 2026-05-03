@@ -1118,14 +1118,15 @@ function escapeAttr(s) {
   return escapeHtml(s).replace(/`/g, '&#96;');
 }
 
-loadTasks();
-</script>
-</body>
-</html>
-
 function toggleTodayOnly() {
   todayOnly = !todayOnly;
   todayBtn.textContent = todayOnly ? '顯示全部日期' : '只看今日發布';
   todayBtn.style.background = todayOnly ? 'var(--accent)' : 'rgba(255,255,255,.12)';
   renderGantt();
 }
+loadTasks();
+</script>
+</body>
+</html>
+
+
