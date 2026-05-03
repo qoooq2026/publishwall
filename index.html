@@ -858,19 +858,6 @@ function buildMediaLinks(t) {
   return items.map(([label, url]) => mediaItem(label, url)).join('');
 }
 
-function mediaItem(label, url) {
-  const preview = toDrivePreviewUrl(url);
-  const download = toDriveDownloadUrl(url) || url;
-
-  return `<div class="media-item">
-    ${preview ? `<iframe class="media-frame" src="${escapeAttr(preview)}" loading="lazy"></iframe>` : ''}
-    <div class="media-line">
-      <a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeHtml(label)} 預覽</a>
-      <a href="${escapeAttr(download)}" target="_blank" rel="noopener">下載</a>
-    </div>
-  </div>`;
-}
-
 function openDownloadUrl(url) {
   const a = document.createElement('a');
   a.href = toDriveDownloadUrl(url);
@@ -893,13 +880,6 @@ function downloadAllMedia() {
   items.forEach(([, url]) => openDownloadUrl(url));
 }
 
-
-  items.forEach(([, url], i) => {
-    const download = toDriveDownloadUrl(url) || url;
-    setTimeout(() => window.open(download, '_blank'), i * 350);
-  });
-}
-
 async function savePublish() {
   if (!currentTask || isSaving) return;
 
@@ -917,8 +897,7 @@ async function savePublish() {
       account: account.value,
       memo: memoInput.value,
       publishDate: publishDate.value,
-      submitted: 'TRUE',
-      submittedDisplay.value = '已投稿';
+      submitted: 'TRUE'
     });
 
     if (!json.ok) throw new Error(json.error || '儲存失敗');
@@ -928,10 +907,11 @@ async function savePublish() {
       account: account.value,
       memo: memoInput.value,
       publishDate: publishDate.value,
-      submitted: submittedInput.value,
+      submitted: 'TRUE',
       isNoPublishDate: !publishDate.value
     });
 
+    submittedDisplay.value = '已投稿';
     currentTask.status = getPublishStatus(currentTask);
 
     setNotice('saveNotice', '已儲存。', 'ok');
@@ -1148,17 +1128,6 @@ function mediaItem(label, url) {
       <a href="${escapeAttr(download)}" target="_blank" rel="noopener">下載</a>
     </div>
   </div>`;
-}
-
-
-function toDrivePreviewUrl(url) {
-  const id = extractDriveId(url);
-  return id ? `https://drive.google.com/file/d/${id}/preview` : '';
-}
-
-function toDriveDownloadUrl(url) {
-  const id = extractDriveId(url);
-  return id ? `https://drive.google.com/uc?export=download&id=${id}` : '';
 }
 
 function escapeHtml(s) {
