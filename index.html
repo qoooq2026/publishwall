@@ -3,74 +3,641 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>發布任務甘特圖</title>
+  <title>發布任務甘特圖｜QOOOQ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    body { margin:0; font-family: Arial, "Noto Sans TC", sans-serif; background:#f7f5ef; color:#1f2933; }
-    header { position:sticky; top:0; z-index:5; background:#fff; border-bottom:1px solid #ddd; padding:12px 16px; }
-    .filters { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
-    select, input, textarea, button { font:inherit; padding:9px 10px; border:1px solid #ccc; border-radius:8px; background:#fff; }
-    button { background:#17633f; color:white; border:0; cursor:pointer; }
-    .wrap { overflow:auto; height:calc(100vh - 92px); }
-    table { border-collapse:separate; border-spacing:0; min-width:1400px; width:max-content; }
-    th, td { border-right:1px solid #ddd; border-bottom:1px solid #ddd; padding:8px; background:#fff; vertical-align:top; }
-    th { position:sticky; top:0; z-index:3; background:#f0eadf; white-space:nowrap; }
-    .left { position:sticky; left:0; z-index:2; background:#fff; min-width:360px; max-width:360px; }
-    th.left { z-index:4; background:#eadcc7; }
-    .date { min-width:105px; text-align:center; }
-    .task { background:#e8f4ee; border-left:4px solid #17633f; border-radius:6px; padding:6px; cursor:pointer; font-size:13px; margin:2px 0; }
-    .overdue .task { background:#ffe7e3; border-left-color:#b42318; }
-    .meta { font-size:12px; color:#667085; margin-top:4px; }
-    dialog { width:min(920px, 94vw); border:0; border-radius:12px; padding:0; box-shadow:0 20px 60px #0003; }
-    .modal { padding:18px; max-height:88vh; overflow:auto; }
-    .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-    .box { background:#faf7f0; border:1px solid #e2d7c8; border-radius:10px; padding:12px; }
-    .script { white-space:pre-wrap; line-height:1.7; }
-    .media a { display:block; margin:6px 0; }
-    .form { display:grid; gap:10px; margin-top:14px; }
-    .close { float:right; background:#555; }
+    :root {
+      --bg: #17312c;
+      --bg2: #1d3a34;
+      --panel: #fbf7ef;
+      --panel2: #fffdf8;
+      --ink: #14231f;
+      --muted: #6c7a76;
+      --line: #dfd4c4;
+      --accent: #f2735b;
+      --green: #17633f;
+      --green2: #0f4f33;
+      --warn: #b42318;
+      --done: #7a5c18;
+      --shadow: 0 18px 50px rgba(13, 32, 28, .18);
+    }
+
+    * { box-sizing: border-box; min-width: 0; }
+    body {
+      margin: 0;
+      font-family: "Noto Sans TC", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    .app-shell {
+      min-height: 100vh;
+      background: linear-gradient(180deg, var(--bg), #10241f 52%, #f4eee5 52%);
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      padding: 18px 22px;
+      background: rgba(23, 49, 44, .94);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(255,255,255,.1);
+      color: #fff;
+    }
+
+    .topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand-kicker {
+      font: 700 10px/1 "Space Mono", monospace;
+      letter-spacing: 3px;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 6px 0 0;
+      font-size: clamp(24px, 3vw, 38px);
+      letter-spacing: .02em;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .status-pill {
+      border: 1px solid rgba(255,255,255,.14);
+      color: #dce8e4;
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+    }
+
+    .filters {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(140px, 1fr));
+      gap: 10px;
+    }
+
+    select, input, textarea, button {
+      font: inherit;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      padding: 10px 12px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    select:focus, input:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(242,115,91,.12);
+    }
+
+    button {
+      border: 0;
+      background: var(--green);
+      color: #fff;
+      cursor: pointer;
+      font-weight: 700;
+      transition: transform .15s, background .2s, opacity .2s;
+    }
+
+    button:hover {
+      background: var(--green2);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: .62;
+      cursor: wait;
+      transform: none;
+    }
+
+    .secondary {
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.16);
+    }
+
+    .secondary:hover {
+      background: rgba(255,255,255,.18);
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      padding: 18px 22px 0;
+      max-width: 1480px;
+      margin: 0 auto;
+    }
+
+    .metric {
+      background: rgba(255,255,255,.08);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+
+    .metric b {
+      display: block;
+      font-size: 24px;
+      margin-bottom: 4px;
+    }
+
+    .metric span {
+      color: #bfd0ca;
+      font-size: 12px;
+      letter-spacing: 1px;
+    }
+
+    .board-wrap {
+      max-width: 1480px;
+      margin: 18px auto 0;
+      padding: 0 22px 24px;
+    }
+
+    .board-card {
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      max-height: calc(100vh - 245px);
+    }
+
+    table {
+      border-collapse: separate;
+      border-spacing: 0;
+      width: max-content;
+      min-width: 1500px;
+    }
+
+    th, td {
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      background: var(--panel2);
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      background: #eadcc7;
+      color: #26332f;
+      padding: 10px 8px;
+      white-space: nowrap;
+      font-size: 12px;
+    }
+
+    td {
+      padding: 8px;
+      min-height: 60px;
+    }
+
+    .left {
+      position: sticky;
+      left: 0;
+      z-index: 3;
+      width: 410px;
+      min-width: 410px;
+      max-width: 410px;
+      background: #fffaf2;
+    }
+
+    th.left {
+      z-index: 5;
+      background: #dfc9aa;
+    }
+
+    .date {
+      width: 112px;
+      min-width: 112px;
+      text-align: center;
+    }
+
+    .today {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .special-col {
+      width: 126px;
+      min-width: 126px;
+      text-align: center;
+      background: #f8ddd8;
+      color: #77251e;
+    }
+
+    .nodate-col {
+      background: #f4ead7;
+      color: #614a19;
+    }
+
+    .row-title {
+      font-weight: 900;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .row-meta {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.7;
+      word-break: break-all;
+    }
+
+    .row-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 8px;
+    }
+
+    .tag {
+      font-size: 11px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      background: #edf5f1;
+      color: var(--green);
+      border: 1px solid #d4e5dc;
+    }
+
+    .task {
+      border: 1px solid #cfe0d7;
+      border-left: 4px solid var(--green);
+      background: #eef8f3;
+      border-radius: 7px;
+      padding: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      line-height: 1.5;
+      transition: transform .15s, box-shadow .15s;
+    }
+
+    .task:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(23,99,63,.14);
+    }
+
+    .task.overdue {
+      border-color: #f0c4bd;
+      border-left-color: var(--warn);
+      background: #fff0ed;
+    }
+
+    .task.done {
+      border-color: #d6d0be;
+      border-left-color: var(--done);
+      background: #f8f3e6;
+    }
+
+    .task.nodate {
+      border-color: #e7d3a8;
+      border-left-color: #9a6700;
+      background: #fff7e6;
+    }
+
+    .task-title {
+      font-weight: 900;
+    }
+
+    .task-sub {
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .empty, .loading-box {
+      padding: 38px;
+      text-align: center;
+      color: var(--muted);
+      background: var(--panel2);
+    }
+
+    .loading-box b {
+      display: block;
+      color: var(--ink);
+      font-size: 18px;
+      margin-bottom: 6px;
+    }
+
+    dialog {
+      width: min(1120px, 94vw);
+      border: 0;
+      border-radius: 12px;
+      padding: 0;
+      box-shadow: 0 24px 70px rgba(0,0,0,.34);
+      background: var(--panel);
+    }
+
+    dialog::backdrop {
+      background: rgba(8, 20, 17, .62);
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-head {
+      background: var(--bg);
+      color: #fff;
+      padding: 18px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+    }
+
+    .modal-title {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.45;
+      word-break: break-all;
+    }
+
+    .modal-sub {
+      margin-top: 8px;
+      color: #c6d7d2;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .close {
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.16);
+      min-width: 72px;
+    }
+
+    .modal-body {
+      padding: 20px 22px 24px;
+      max-height: 82vh;
+      overflow: auto;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr);
+      gap: 14px;
+    }
+
+    .box {
+      background: #fffdf8;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .box h3 {
+      margin: 0 0 12px;
+      font-size: 16px;
+    }
+
+    .script {
+      white-space: pre-wrap;
+      line-height: 1.85;
+      font-size: 15px;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .media-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .media-item {
+      border: 1px solid #e4d8c8;
+      background: #faf6ee;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .media-frame {
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      border: 0;
+      background: #fff;
+      display: block;
+    }
+
+    .media-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 10px;
+    }
+
+    .media-line a {
+      color: var(--green);
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .form-grid .full {
+      grid-column: 1 / -1;
+    }
+
+    .section-stack {
+      display: grid;
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .save-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .notice {
+      min-height: 22px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .notice.ok {
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    .notice.err {
+      color: var(--warn);
+      font-weight: 700;
+    }
+
+    @media (max-width: 920px) {
+      .filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .summary {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .detail-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .left {
+        width: 320px;
+        min-width: 320px;
+        max-width: 320px;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .topline {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .filters, .summary {
+        grid-template-columns: 1fr;
+      }
+
+      .board-wrap, .summary {
+        padding-left: 12px;
+        padding-right: 12px;
+      }
+
+      .table-wrap {
+        max-height: calc(100vh - 360px);
+      }
+    }
   </style>
 </head>
 <body>
-<header>
-  <strong>發布任務甘特圖</strong>
-  <div class="filters">
-    <select id="memoFilter"><option value="">Memo 全部</option></select>
-    <select id="monthFilter"><option value="">發佈月 全部</option></select>
-    <select id="brandFilter"><option value="">品牌 全部</option></select>
-    <select id="productFilter"><option value="">商品 全部</option></select>
-    <button onclick="loadTasks()">重新整理</button>
-  </div>
-</header>
+<div class="app-shell">
+  <header class="topbar">
+    <div class="topline">
+      <div>
+        <div class="brand-kicker">QOOOQ Publish Wall</div>
+        <h1>發布任務甘特圖</h1>
+      </div>
+      <div class="actions">
+        <div class="status-pill" id="loadState">尚未載入</div>
+        <button class="secondary" id="reloadBtn" onclick="loadTasks()">重新整理</button>
+      </div>
+    </div>
 
-<div class="wrap">
-  <table id="gantt"></table>
+    <div class="filters">
+      <select id="memoFilter"><option value="">Memo 全部</option></select>
+      <select id="monthFilter"><option value="">發佈月 全部</option></select>
+      <select id="brandFilter"><option value="">品牌 全部</option></select>
+      <select id="productFilter"><option value="">商品 全部</option></select>
+      <select id="platformFilter"><option value="">發布平台 全部</option></select>
+      <select id="statusFilter"><option value="">狀態 全部</option></select>
+    </div>
+  </header>
+
+  <section class="summary">
+    <div class="metric"><b id="totalCount">0</b><span>目前範圍任務</span></div>
+    <div class="metric"><b id="doneCount">0</b><span>已發布</span></div>
+    <div class="metric"><b id="todoCount">0</b><span>未發布</span></div>
+    <div class="metric"><b id="overdueCount">0</b><span>已逾期</span></div>
+  </section>
+
+  <main class="board-wrap">
+    <div class="board-card">
+      <div class="table-wrap">
+        <table id="gantt">
+          <tr>
+            <td class="loading-box">
+              <b>載入中</b>
+              正在讀取發布牆 cache...
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </main>
 </div>
 
 <dialog id="detailDialog">
-  <div class="modal">
+  <div class="modal-head">
+    <div>
+      <h2 class="modal-title" id="detailTitle"></h2>
+      <div class="modal-sub" id="detailMeta"></div>
+    </div>
     <button class="close" onclick="detailDialog.close()">關閉</button>
-    <h2 id="detailTitle"></h2>
-    <p><a id="scriptUrl" target="_blank">開啟前往腳本</a></p>
+  </div>
 
-    <div class="grid">
+  <div class="modal-body">
+    <div class="detail-grid">
       <div class="box">
         <h3>任務內容</h3>
         <div id="detailBody" class="script"></div>
       </div>
-      <div class="box media">
+
+      <div class="box">
         <h3>素材預覽 / 下載</h3>
-        <div id="mediaList"></div>
+        <div id="mediaList" class="media-list"></div>
+        <div class="save-row">
+          <button id="downloadAllBtn" onclick="downloadAllMedia()">下載全部素材</button>
+        </div>
       </div>
     </div>
 
-    <div class="box" style="margin-top:14px;">
-      <h3>開始發布</h3>
-      <div class="form">
-        <input id="publishLink" placeholder="發布連結">
-        <input id="account" placeholder="實施帳號">
-        <input id="memoInput" placeholder="Memo">
-        <input id="publishDate" type="date">
-        <button onclick="savePublish()">儲存送出</button>
+    <div class="section-stack">
+      <div class="box">
+        <h3>開始發布</h3>
+        <div class="form-grid">
+          <input id="publishLink" class="full" placeholder="發布連結">
+          <input id="account" placeholder="實施帳號">
+          <input id="memoInput" placeholder="Memo">
+          <input id="publishDate" type="date">
+          <input id="submittedInput" placeholder="已投稿 TRUE/FALSE" value="TRUE">
+        </div>
+        <div class="save-row">
+          <button id="saveBtn" onclick="savePublish()">儲存送出</button>
+          <span id="saveNotice" class="notice"></span>
+        </div>
+      </div>
+
+      <div class="box">
+        <h3>曝光數據</h3>
+        <div class="form-grid">
+          <input id="exposureInput" class="full" inputmode="numeric" placeholder="總曝光次數">
+        </div>
+        <div class="save-row">
+          <button id="exposureBtn" onclick="saveExposure()">填入曝光數據</button>
+          <span id="exposureNotice" class="notice"></span>
+        </div>
       </div>
     </div>
   </div>
@@ -81,15 +648,44 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxCZBPmFVsC4cfBTam-NllY
 
 let allTasks = [];
 let currentTask = null;
+let isSaving = false;
 
 async function loadTasks() {
-  const res = await fetch(API_URL + '?action=tasks');
-  const json = await res.json();
-  if (!json.ok) throw new Error(json.error);
+  setLoading(true, '載入中...');
 
-  allTasks = json.data.tasks || [];
-  fillFilters(json.data.filters || {});
-  renderGantt();
+  try {
+    const res = await fetch(API_URL + '?action=tasks&ts=' + Date.now());
+    const json = await res.json();
+
+    if (!json.ok) throw new Error(json.error || '讀取失敗');
+
+    allTasks = (json.data.tasks || []).map(normalizeTask);
+
+    fillFilters(json.data.filters || buildFiltersFromTasks(allTasks));
+    renderGantt();
+
+    setLoading(false, '已更新 ' + formatTime(new Date()));
+  } catch (err) {
+    setLoading(false, '讀取失敗');
+    document.getElementById('gantt').innerHTML =
+      `<tr><td class="empty">${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+function normalizeTask(task) {
+  const t = {...task};
+  t.isNoPublishDate = Boolean(t.isNoPublishDate || !t.publishDate);
+  t.status = getPublishStatus(t);
+  return t;
+}
+
+function getPublishStatus(t) {
+  const submitted = String(t.submitted || '').toUpperCase() === 'TRUE';
+  const done = Boolean(t.account && t.memo && t.publishLink && submitted);
+
+  if (done) return '已發布';
+  if (t.publishDate && isPastDate(t.publishDate)) return '已逾期';
+  return '未發布';
 }
 
 function fillFilters(filters) {
@@ -97,43 +693,66 @@ function fillFilters(filters) {
   fillSelect('monthFilter', '發佈月 全部', filters.publishMonth);
   fillSelect('brandFilter', '品牌 全部', filters.brand);
   fillSelect('productFilter', '商品 全部', filters.product);
+  fillSelect('platformFilter', '發布平台 全部', filters.platform);
+  fillSelect('statusFilter', '狀態 全部', ['已發布', '已逾期', '未發布']);
 }
 
 function fillSelect(id, label, values = []) {
-  const old = document.getElementById(id).value;
-  document.getElementById(id).innerHTML =
+  const el = document.getElementById(id);
+  const old = el.value;
+  const unique = [...new Set((values || []).filter(Boolean))].sort();
+
+  el.innerHTML =
     `<option value="">${label}</option>` +
-    values.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
-  document.getElementById(id).value = old;
+    unique.map(v => `<option value="${escapeAttr(v)}">${escapeHtml(v)}</option>`).join('');
+
+  if (unique.includes(old)) el.value = old;
 }
 
-document.querySelectorAll('select').forEach(el => el.addEventListener('change', renderGantt));
+document.querySelectorAll('select').forEach(el => {
+  el.addEventListener('change', renderGantt);
+});
 
 function renderGantt() {
-  const tasks = allTasks.filter(t =>
-    match('memoFilter', t.memo) &&
-    match('monthFilter', t.publishMonth) &&
-    match('brandFilter', t.brand) &&
-    match('productFilter', t.product)
-  );
-
+  const tasks = filteredTasks();
   const dates = nextDays(30);
-  const rows = tasks;
 
-  let html = '<tr><th class="left">Memo / 發佈月 / 品牌 / 商品 / 任務ID</th><th class="date">已過期</th>';
-  dates.forEach(d => html += `<th class="date">${d}</th>`);
+  updateMetrics(tasks);
+
+  if (tasks.length === 0) {
+    document.getElementById('gantt').innerHTML =
+      '<tr><td class="empty">目前沒有符合條件的任務</td></tr>';
+    return;
+  }
+
+  let html = '<tr><th class="left">Memo / 發佈月 / 品牌 / 商品 / 任務ID / 發布平台</th><th class="special-col">已過期</th><th class="special-col nodate-col">發布日為空</th>';
+
+  dates.forEach(d => {
+    html += `<th class="date ${isToday(d) ? 'today' : ''}">${formatDateHead(d)}</th>`;
+  });
+
   html += '</tr>';
 
-  rows.forEach(t => {
+  tasks.forEach(t => {
     html += `<tr>
       <td class="left">
-        <strong>${escapeHtml(t.memo || '(無 Memo)')}</strong>
-        <div class="meta">${escapeHtml(t.publishMonth)}｜${escapeHtml(t.brand)}｜${escapeHtml(t.product)}</div>
-        <div class="meta">${escapeHtml(t.taskId)}</div>
+        <div class="row-title">${escapeHtml(t.memo || '(無 Memo)')}</div>
+        <div class="row-meta">${escapeHtml(t.publishMonth || '-')}｜${escapeHtml(t.brand || '-')}｜${escapeHtml(t.product || '-')}</div>
+        <div class="row-meta">${escapeHtml(t.taskId || '')}</div>
+        <div class="row-tags">
+          <span class="tag">${escapeHtml(t.platform || '未填平台')}</span>
+          <span class="tag">${escapeHtml(t.status)}</span>
+        </div>
       </td>`;
 
-    html += `<td class="overdue">${t.isOverdue ? taskCard(t) : ''}</td>`;
-    dates.forEach(d => html += `<td>${!t.isOverdue && t.publishDate === d ? taskCard(t) : ''}</td>`);
+    html += `<td class="special-col">${t.status === '已逾期' ? taskCard(t) : ''}</td>`;
+    html += `<td class="special-col nodate-col">${t.isNoPublishDate ? taskCard(t) : ''}</td>`;
+
+    dates.forEach(d => {
+      const shouldShow = !t.isNoPublishDate && t.status !== '已逾期' && t.publishDate === d;
+      html += `<td>${shouldShow ? taskCard(t) : ''}</td>`;
+    });
+
     html += '</tr>';
   });
 
@@ -141,9 +760,15 @@ function renderGantt() {
 }
 
 function taskCard(t) {
-  return `<div class="task" onclick="openDetail('${escapeAttr(t.id)}')">
-    ${escapeHtml(t.platform || '')}
-    <div class="meta">${escapeHtml(t.publishDate || '')}</div>
+  const statusClass =
+    t.status === '已逾期' ? 'overdue' :
+    t.status === '已發布' ? 'done' :
+    t.isNoPublishDate ? 'nodate' :
+    '';
+
+  return `<div class="task ${statusClass}" onclick="openDetail('${escapeAttr(t.id)}')">
+    <div class="task-title">${escapeHtml(t.platform || '任務')}</div>
+    <div class="task-sub">${escapeHtml(t.publishDate || '發布日為空')}｜${escapeHtml(t.status)}</div>
   </div>`;
 }
 
@@ -151,40 +776,94 @@ function openDetail(id) {
   currentTask = allTasks.find(t => t.id === id);
   if (!currentTask) return;
 
-  detailTitle.textContent = currentTask.taskId;
-  scriptUrl.href = currentTask.scriptUrl || '#';
+  clearNotices();
 
-  detailBody.textContent =
-    `人設：\n${currentTask.persona || ''}\n\n腳本內容：\n${currentTask.scriptContent || ''}` +
-    (currentTask.sourceType === '脆' ? `\n\n留言：\n${currentTask.comment || ''}` : '');
+  detailTitle.textContent = currentTask.taskId || '任務詳情';
+  detailMeta.textContent =
+    `${currentTask.memo || '無 Memo'}｜${currentTask.publishMonth || '-'}｜${currentTask.brand || '-'}｜${currentTask.product || '-'}｜${currentTask.platform || '-'}`;
 
+  detailBody.textContent = buildDetailText(currentTask);
   mediaList.innerHTML = buildMediaLinks(currentTask);
 
   publishLink.value = currentTask.publishLink || '';
   account.value = currentTask.account || '';
   memoInput.value = currentTask.memo || '';
   publishDate.value = currentTask.publishDate || '';
+  submittedInput.value = currentTask.submitted || 'TRUE';
+  exposureInput.value = currentTask.totalExposure || '';
 
   detailDialog.showModal();
 }
 
-function buildMediaLinks(t) {
-  const items = t.sourceType === '影音'
-    ? [['影片連結', t.videoLink]]
-    : [['圖片1', t.image1], ['圖片2', t.image2], ['圖片3', t.image3], ['留言內圖片', t.commentImg]];
+function buildDetailText(t) {
+  const chunks = [
+    ['人設', t.persona],
+    ['腳本內容', t.scriptContent]
+  ];
 
-  return items
-    .filter(x => x[1])
-    .map(([label, url]) => `<a href="${escapeAttr(url)}" target="_blank">${escapeHtml(label)}：預覽 / 下載</a>`)
-    .join('') || '沒有素材連結';
+  if (t.comment) chunks.push(['留言', t.comment]);
+
+  return chunks
+    .map(([label, value]) => `${label}:\n${value || '(cache 尚未帶入)'}`)
+    .join('\n\n');
+}
+
+function getMediaItems(t) {
+  return [
+    ['圖片1', t.image1],
+    ['圖片2', t.image2],
+    ['圖片3', t.image3],
+    ['留言內圖片', t.commentImg],
+    ['影片連結', t.videoLink]
+  ].filter(x => x[1]);
+}
+
+function buildMediaLinks(t) {
+  const items = getMediaItems(t);
+  if (items.length === 0) {
+    return '<div class="muted">沒有素材連結，或 cache 尚未帶入素材欄位。</div>';
+  }
+
+  return items.map(([label, url]) => mediaItem(label, url)).join('');
+}
+
+function mediaItem(label, url) {
+  const preview = toDrivePreviewUrl(url);
+  const download = toDriveDownloadUrl(url) || url;
+
+  return `<div class="media-item">
+    ${preview ? `<iframe class="media-frame" src="${escapeAttr(preview)}" loading="lazy"></iframe>` : ''}
+    <div class="media-line">
+      <a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeHtml(label)} 預覽</a>
+      <a href="${escapeAttr(download)}" target="_blank" rel="noopener">下載</a>
+    </div>
+  </div>`;
+}
+
+function downloadAllMedia() {
+  if (!currentTask) return;
+
+  const items = getMediaItems(currentTask);
+  if (items.length === 0) {
+    setNotice('exposureNotice', '沒有可下載的素材。', 'err');
+    return;
+  }
+
+  items.forEach(([, url], i) => {
+    const download = toDriveDownloadUrl(url) || url;
+    setTimeout(() => window.open(download, '_blank'), i * 350);
+  });
 }
 
 async function savePublish() {
-  if (!currentTask) return;
+  if (!currentTask || isSaving) return;
 
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    body: JSON.stringify({
+  isSaving = true;
+  setButtonLoading('saveBtn', true, '傳送中...');
+  setNotice('saveNotice', '正在寫回管理表...', '');
+
+  try {
+    const json = await postApi({
       action: 'updatePublish',
       sourceSpreadsheetId: currentTask.sourceSpreadsheetId,
       sourceSheetName: currentTask.sourceSheetName,
@@ -192,19 +871,96 @@ async function savePublish() {
       publishLink: publishLink.value,
       account: account.value,
       memo: memoInput.value,
-      publishDate: publishDate.value
-    })
+      publishDate: publishDate.value,
+      submitted: submittedInput.value
+    });
+
+    if (!json.ok) throw new Error(json.error || '儲存失敗');
+
+    Object.assign(currentTask, {
+      publishLink: publishLink.value,
+      account: account.value,
+      memo: memoInput.value,
+      publishDate: publishDate.value,
+      submitted: submittedInput.value,
+      isNoPublishDate: !publishDate.value
+    });
+
+    currentTask.status = getPublishStatus(currentTask);
+
+    setNotice('saveNotice', '已儲存。', 'ok');
+    renderGantt();
+  } catch (err) {
+    setNotice('saveNotice', '儲存失敗：' + err.message, 'err');
+  } finally {
+    setButtonLoading('saveBtn', false, '儲存送出');
+    isSaving = false;
+  }
+}
+
+async function saveExposure() {
+  if (!currentTask || isSaving) return;
+
+  isSaving = true;
+  setButtonLoading('exposureBtn', true, '傳送中...');
+  setNotice('exposureNotice', '正在寫入總曝光次數...', '');
+
+  try {
+    const json = await postApi({
+      action: 'updateExposure',
+      sourceSpreadsheetId: currentTask.sourceSpreadsheetId,
+      sourceSheetName: currentTask.sourceSheetName,
+      sourceRow: currentTask.sourceRow,
+      totalExposure: exposureInput.value
+    });
+
+    if (!json.ok) throw new Error(json.error || '儲存失敗');
+
+    currentTask.totalExposure = exposureInput.value;
+    setNotice('exposureNotice', '曝光數據已儲存。', 'ok');
+  } catch (err) {
+    setNotice('exposureNotice', '儲存失敗：' + err.message, 'err');
+  } finally {
+    setButtonLoading('exposureBtn', false, '填入曝光數據');
+    isSaving = false;
+  }
+}
+
+async function postApi(payload) {
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify(payload)
   });
 
-  const json = await res.json();
-  if (!json.ok) {
-    alert('儲存失敗：' + json.error);
-    return;
-  }
+  return res.json();
+}
 
-  alert('已儲存');
-  detailDialog.close();
-  await loadTasks();
+function filteredTasks() {
+  return allTasks.filter(t =>
+    match('memoFilter', t.memo) &&
+    match('monthFilter', t.publishMonth) &&
+    match('brandFilter', t.brand) &&
+    match('productFilter', t.product) &&
+    match('platformFilter', t.platform) &&
+    match('statusFilter', t.status)
+  );
+}
+
+function updateMetrics(tasks) {
+  totalCount.textContent = tasks.length;
+  doneCount.textContent = tasks.filter(t => t.status === '已發布').length;
+  todoCount.textContent = tasks.filter(t => t.status === '未發布').length;
+  overdueCount.textContent = tasks.filter(t => t.status === '已逾期').length;
+}
+
+function buildFiltersFromTasks(tasks) {
+  return {
+    memo: unique(tasks.map(t => t.memo)),
+    publishMonth: unique(tasks.map(t => t.publishMonth)),
+    brand: unique(tasks.map(t => t.brand)),
+    product: unique(tasks.map(t => t.product)),
+    platform: unique(tasks.map(t => t.platform))
+  };
 }
 
 function match(filterId, value) {
@@ -214,26 +970,120 @@ function match(filterId, value) {
 
 function nextDays(count) {
   const result = [];
-  const d = new Date();
+  const base = localDateStart(new Date());
+
   for (let i = 0; i <= count; i++) {
-    const x = new Date(d);
-    x.setDate(d.getDate() + i);
-    result.push(x.toISOString().slice(0, 10));
+    const x = new Date(base);
+    x.setDate(base.getDate() + i);
+    result.push(formatDate(x));
   }
+
   return result;
 }
 
+function isPastDate(value) {
+  if (!value) return false;
+  return String(value) < formatDate(localDateStart(new Date()));
+}
+
+function isToday(value) {
+  return value === formatDate(new Date());
+}
+
+function formatDateHead(value) {
+  return value.slice(5).replace('-', '/');
+}
+
+function formatDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function localDateStart(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function formatTime(date) {
+  return date.toLocaleTimeString('zh-TW', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function setLoading(isLoading, text) {
+  reloadBtn.disabled = isLoading;
+  reloadBtn.textContent = isLoading ? '讀取中...' : '重新整理';
+  loadState.textContent = text;
+}
+
+function setButtonLoading(id, loading, text) {
+  const btn = document.getElementById(id);
+  btn.disabled = loading;
+  btn.textContent = text;
+}
+
+function setNotice(id, text, type) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'notice' + (type ? ' ' + type : '');
+}
+
+function clearNotices() {
+  setNotice('saveNotice', '', '');
+  setNotice('exposureNotice', '', '');
+}
+
+function unique(values) {
+  return [...new Set((values || [])
+    .map(v => String(v || '').trim())
+    .filter(Boolean))]
+    .sort();
+}
+
+function extractDriveId(url) {
+  const s = String(url || '');
+
+  let m = s.match(/\/file\/d\/([^/]+)/);
+  if (m) return m[1];
+
+  m = s.match(/[?&]id=([^&]+)/);
+  if (m) return m[1];
+
+  m = s.match(/open\?id=([^&]+)/);
+  if (m) return m[1];
+
+  return '';
+}
+
+function toDrivePreviewUrl(url) {
+  const id = extractDriveId(url);
+  return id ? `https://drive.google.com/file/d/${id}/preview` : '';
+}
+
+function toDriveDownloadUrl(url) {
+  const id = extractDriveId(url);
+  return id ? `https://drive.google.com/uc?export=download&id=${id}` : '';
+}
+
 function escapeHtml(s) {
-  return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  return String(s || '').replace(/[&<>"']/g, m => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[m]));
 }
 
 function escapeAttr(s) {
   return escapeHtml(s).replace(/`/g, '&#96;');
 }
 
-loadTasks().catch(err => {
-  document.body.innerHTML = '<pre style="padding:20px;color:red;">' + escapeHtml(err.message) + '</pre>';
-});
+loadTasks();
 </script>
 </body>
 </html>
