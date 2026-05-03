@@ -622,7 +622,7 @@
           <input id="account" placeholder="實施帳號">
           <input id="memoInput" placeholder="Memo">
           <input id="publishDate" type="date">
-          <input id="submittedInput" placeholder="已投稿 TRUE/FALSE" value="TRUE">
+          <input id="submittedDisplay" value="尚未投稿" readonly>
         </div>
         <div class="save-row">
           <button id="saveBtn" onclick="savePublish()">儲存送出</button>
@@ -790,7 +790,10 @@ async function openDetail(id) {
   account.value = currentTask.account || '';
   memoInput.value = currentTask.memo || '';
   publishDate.value = currentTask.publishDate || '';
-  submittedInput.value = currentTask.submitted || 'TRUE';
+  submittedDisplay.value =
+  String(currentTask.submitted || '').toUpperCase() === 'TRUE'
+    ? '已投稿'
+    : '尚未投稿';
   exposureInput.value = currentTask.totalExposure || '';
 
   detailDialog.showModal();
@@ -832,7 +835,7 @@ function buildDetailText(t) {
   if (t.comment) chunks.push(['留言', t.comment]);
 
   return chunks
-    .map(([label, value]) => `${label}:\n${value || '(cache 尚未帶入)'}`)
+    .map(([label, value]) => `${label}:\n${value || '(前往腳本未填或表頭名稱不一致)'}`)
     .join('\n\n');
 }
 
@@ -868,6 +871,16 @@ function mediaItem(label, url) {
   </div>`;
 }
 
+function openDownloadUrl(url) {
+  const a = document.createElement('a');
+  a.href = toDriveDownloadUrl(url);
+  a.target = '_blank';
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 function downloadAllMedia() {
   if (!currentTask) return;
 
@@ -876,6 +889,10 @@ function downloadAllMedia() {
     setNotice('exposureNotice', '沒有可下載的素材。', 'err');
     return;
   }
+
+  items.forEach(([, url]) => openDownloadUrl(url));
+}
+
 
   items.forEach(([, url], i) => {
     const download = toDriveDownloadUrl(url) || url;
@@ -900,7 +917,8 @@ async function savePublish() {
       account: account.value,
       memo: memoInput.value,
       publishDate: publishDate.value,
-      submitted: submittedInput.value
+      submitted: 'TRUE',
+      submittedDisplay.value = '已投稿';
     });
 
     if (!json.ok) throw new Error(json.error || '儲存失敗');
@@ -1091,8 +1109,47 @@ function extractDriveId(url) {
   m = s.match(/open\?id=([^&]+)/);
   if (m) return m[1];
 
+  m = s.match(/\/d\/([^/]+)/);
+  if (m) return m[1];
+
   return '';
 }
+
+function isDirectImageUrl(url) {
+  const s = String(url || '');
+  return /\.(png|jpe?g|gif|webp)(\?|#|$)/i.test(s) ||
+    s.includes('googleusercontent.com');
+}
+
+function toDrivePreviewUrl(url) {
+  const id = extractDriveId(url);
+  return id ? `https://drive.google.com/file/d/${id}/preview` : '';
+}
+
+function toDriveDownloadUrl(url) {
+  const id = extractDriveId(url);
+  return id ? `https://drive.google.com/uc?export=download&id=${id}` : String(url || '');
+}
+
+function mediaItem(label, url) {
+  const preview = toDrivePreviewUrl(url);
+  const download = toDriveDownloadUrl(url);
+
+  const previewHtml = preview
+    ? `<iframe class="media-frame" src="${escapeAttr(preview)}" loading="lazy"></iframe>`
+    : isDirectImageUrl(url)
+      ? `<img class="media-frame" src="${escapeAttr(url)}" loading="lazy" alt="${escapeAttr(label)}">`
+      : '';
+
+  return `<div class="media-item">
+    ${previewHtml}
+    <div class="media-line">
+      <a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeHtml(label)} 預覽</a>
+      <a href="${escapeAttr(download)}" target="_blank" rel="noopener">下載</a>
+    </div>
+  </div>`;
+}
+
 
 function toDrivePreviewUrl(url) {
   const id = extractDriveId(url);
