@@ -771,8 +771,7 @@ function taskCard(t) {
     <div class="task-sub">${escapeHtml(t.publishDate || '發布日為空')}｜${escapeHtml(t.status)}</div>
   </div>`;
 }
-
-function openDetail(id) {
+async function openDetail(id) {
   currentTask = allTasks.find(t => t.id === id);
   if (!currentTask) return;
 
@@ -782,8 +781,8 @@ function openDetail(id) {
   detailMeta.textContent =
     `${currentTask.memo || '無 Memo'}｜${currentTask.publishMonth || '-'}｜${currentTask.brand || '-'}｜${currentTask.product || '-'}｜${currentTask.platform || '-'}`;
 
-  detailBody.textContent = buildDetailText(currentTask);
-  mediaList.innerHTML = buildMediaLinks(currentTask);
+  detailBody.textContent = '正在讀取前往腳本內容...';
+  mediaList.innerHTML = '<div class="muted">正在讀取素材...</div>';
 
   publishLink.value = currentTask.publishLink || '';
   account.value = currentTask.account || '';
@@ -793,7 +792,34 @@ function openDetail(id) {
   exposureInput.value = currentTask.totalExposure || '';
 
   detailDialog.showModal();
+
+  try {
+    const detail = await loadTaskDetail(currentTask);
+    Object.assign(currentTask, detail);
+
+    detailBody.textContent = buildDetailText(currentTask);
+    mediaList.innerHTML = buildMediaLinks(currentTask);
+  } catch (err) {
+    detailBody.textContent = '讀取前往腳本失敗：\n' + err.message;
+    mediaList.innerHTML = '<div class="muted">素材讀取失敗。</div>';
+  }
 }
+async function loadTaskDetail(task) {
+  const url =
+    API_URL +
+    '?action=taskDetail' +
+    '&taskId=' + encodeURIComponent(task.taskId || '') +
+    '&scriptUrl=' + encodeURIComponent(task.scriptUrl || '') +
+    '&sourceSpreadsheetId=' + encodeURIComponent(task.sourceSpreadsheetId || '');
+
+  const res = await fetch(url + '&ts=' + Date.now());
+  const json = await res.json();
+
+  if (!json.ok) throw new Error(json.error || '讀取任務詳情失敗');
+
+  return json.data || {};
+}
+
 
 function buildDetailText(t) {
   const chunks = [
