@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>發布任務甘特圖</title>
+  <style>
+    body { margin:0; font-family: Arial, "Noto Sans TC", sans-serif; background:#f7f5ef; color:#1f2933; }
+    header { position:sticky; top:0; z-index:5; background:#fff; border-bottom:1px solid #ddd; padding:12px 16px; }
+    .filters { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    select, input, textarea, button { font:inherit; padding:9px 10px; border:1px solid #ccc; border-radius:8px; background:#fff; }
+    button { background:#17633f; color:white; border:0; cursor:pointer; }
+    .wrap { overflow:auto; height:calc(100vh - 92px); }
+    table { border-collapse:separate; border-spacing:0; min-width:1400px; width:max-content; }
+    th, td { border-right:1px solid #ddd; border-bottom:1px solid #ddd; padding:8px; background:#fff; vertical-align:top; }
+    th { position:sticky; top:0; z-index:3; background:#f0eadf; white-space:nowrap; }
+    .left { position:sticky; left:0; z-index:2; background:#fff; min-width:360px; max-width:360px; }
+    th.left { z-index:4; background:#eadcc7; }
+    .date { min-width:105px; text-align:center; }
+    .task { background:#e8f4ee; border-left:4px solid #17633f; border-radius:6px; padding:6px; cursor:pointer; font-size:13px; margin:2px 0; }
+    .overdue .task { background:#ffe7e3; border-left-color:#b42318; }
+    .meta { font-size:12px; color:#667085; margin-top:4px; }
+    dialog { width:min(920px, 94vw); border:0; border-radius:12px; padding:0; box-shadow:0 20px 60px #0003; }
+    .modal { padding:18px; max-height:88vh; overflow:auto; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .box { background:#faf7f0; border:1px solid #e2d7c8; border-radius:10px; padding:12px; }
+    .script { white-space:pre-wrap; line-height:1.7; }
+    .media a { display:block; margin:6px 0; }
+    .form { display:grid; gap:10px; margin-top:14px; }
+    .close { float:right; background:#555; }
+  </style>
+</head>
+<body>
+<header>
+  <strong>發布任務甘特圖</strong>
+  <div class="filters">
+    <select id="memoFilter"><option value="">Memo 全部</option></select>
+    <select id="monthFilter"><option value="">發佈月 全部</option></select>
+    <select id="brandFilter"><option value="">品牌 全部</option></select>
+    <select id="productFilter"><option value="">商品 全部</option></select>
+    <button onclick="loadTasks()">重新整理</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <table id="gantt"></table>
+</div>
+
+<dialog id="detailDialog">
+  <div class="modal">
+    <button class="close" onclick="detailDialog.close()">關閉</button>
+    <h2 id="detailTitle"></h2>
+    <p><a id="scriptUrl" target="_blank">開啟前往腳本</a></p>
+
+    <div class="grid">
+      <div class="box">
+        <h3>任務內容</h3>
+        <div id="detailBody" class="script"></div>
+      </div>
+      <div class="box media">
+        <h3>素材預覽 / 下載</h3>
+        <div id="mediaList"></div>
+      </div>
+    </div>
+
+    <div class="box" style="margin-top:14px;">
+      <h3>開始發布</h3>
+      <div class="form">
+        <input id="publishLink" placeholder="發布連結">
+        <input id="account" placeholder="實施帳號">
+        <input id="memoInput" placeholder="Memo">
+        <input id="publishDate" type="date">
+        <button onclick="savePublish()">儲存送出</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbxCZBPmFVsC4cfBTam-NllYez0fN4sAYac4_V-42OekQ74ilMO_HFHANSvLYP_11Io/exec';
+
+let allTasks = [];
+let currentTask = null;
+
+async function loadTasks() {
+  const res = await fetch(API_URL + '?action=tasks');
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error);
+
+  allTasks = json.data.tasks || [];
+  fillFilters(json.data.filters || {});
+  renderGantt();
+}
+
+function fillFilters(filters) {
+  fillSelect('memoFilter', 'Memo 全部', filters.memo);
+  fillSelect('monthFilter', '發佈月 全部', filters.publishMonth);
+  fillSelect('brandFilter', '品牌 全部', filters.brand);
+  fillSelect('productFilter', '商品 全部', filters.product);
+}
+
+function fillSelect(id, label, values = []) {
+  const old = document.getElementById(id).value;
+  document.getElementById(id).innerHTML =
+    `<option value="">${label}</option>` +
+    values.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+  document.getElementById(id).value = old;
+}
+
+document.querySelectorAll('select').forEach(el => el.addEventListener('change', renderGantt));
+
+function renderGantt() {
+  const tasks = allTasks.filter(t =>
+    match('memoFilter', t.memo) &&
+    match('monthFilter', t.publishMonth) &&
+    match('brandFilter', t.brand) &&
+    match('productFilter', t.product)
+  );
+
+  const dates = nextDays(30);
+  const rows = tasks;
+
+  let html = '<tr><th class="left">Memo / 發佈月 / 品牌 / 商品 / 任務ID</th><th class="date">已過期</th>';
+  dates.forEach(d => html += `<th class="date">${d}</th>`);
+  html += '</tr>';
+
+  rows.forEach(t => {
+    html += `<tr>
+      <td class="left">
+        <strong>${escapeHtml(t.memo || '(無 Memo)')}</strong>
+        <div class="meta">${escapeHtml(t.publishMonth)}｜${escapeHtml(t.brand)}｜${escapeHtml(t.product)}</div>
+        <div class="meta">${escapeHtml(t.taskId)}</div>
+      </td>`;
+
+    html += `<td class="overdue">${t.isOverdue ? taskCard(t) : ''}</td>`;
+    dates.forEach(d => html += `<td>${!t.isOverdue && t.publishDate === d ? taskCard(t) : ''}</td>`);
+    html += '</tr>';
+  });
+
+  document.getElementById('gantt').innerHTML = html;
+}
+
+function taskCard(t) {
+  return `<div class="task" onclick="openDetail('${escapeAttr(t.id)}')">
+    ${escapeHtml(t.platform || '')}
+    <div class="meta">${escapeHtml(t.publishDate || '')}</div>
+  </div>`;
+}
+
+function openDetail(id) {
+  currentTask = allTasks.find(t => t.id === id);
+  if (!currentTask) return;
+
+  detailTitle.textContent = currentTask.taskId;
+  scriptUrl.href = currentTask.scriptUrl || '#';
+
+  detailBody.textContent =
+    `人設：\n${currentTask.persona || ''}\n\n腳本內容：\n${currentTask.scriptContent || ''}` +
+    (currentTask.sourceType === '脆' ? `\n\n留言：\n${currentTask.comment || ''}` : '');
+
+  mediaList.innerHTML = buildMediaLinks(currentTask);
+
+  publishLink.value = currentTask.publishLink || '';
+  account.value = currentTask.account || '';
+  memoInput.value = currentTask.memo || '';
+  publishDate.value = currentTask.publishDate || '';
+
+  detailDialog.showModal();
+}
+
+function buildMediaLinks(t) {
+  const items = t.sourceType === '影音'
+    ? [['影片連結', t.videoLink]]
+    : [['圖片1', t.image1], ['圖片2', t.image2], ['圖片3', t.image3], ['留言內圖片', t.commentImg]];
+
+  return items
+    .filter(x => x[1])
+    .map(([label, url]) => `<a href="${escapeAttr(url)}" target="_blank">${escapeHtml(label)}：預覽 / 下載</a>`)
+    .join('') || '沒有素材連結';
+}
+
+async function savePublish() {
+  if (!currentTask) return;
+
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'updatePublish',
+      sourceSpreadsheetId: currentTask.sourceSpreadsheetId,
+      sourceSheetName: currentTask.sourceSheetName,
+      sourceRow: currentTask.sourceRow,
+      publishLink: publishLink.value,
+      account: account.value,
+      memo: memoInput.value,
+      publishDate: publishDate.value
+    })
+  });
+
+  const json = await res.json();
+  if (!json.ok) {
+    alert('儲存失敗：' + json.error);
+    return;
+  }
+
+  alert('已儲存');
+  detailDialog.close();
+  await loadTasks();
+}
+
+function match(filterId, value) {
+  const selected = document.getElementById(filterId).value;
+  return !selected || selected === String(value || '');
+}
+
+function nextDays(count) {
+  const result = [];
+  const d = new Date();
+  for (let i = 0; i <= count; i++) {
+    const x = new Date(d);
+    x.setDate(d.getDate() + i);
+    result.push(x.toISOString().slice(0, 10));
+  }
+  return result;
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function escapeAttr(s) {
+  return escapeHtml(s).replace(/`/g, '&#96;');
+}
+
+loadTasks().catch(err => {
+  document.body.innerHTML = '<pre style="padding:20px;color:red;">' + escapeHtml(err.message) + '</pre>';
+});
+</script>
+</body>
+</html>
