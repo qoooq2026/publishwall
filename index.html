@@ -551,6 +551,7 @@
       </div>
       <div class="actions">
         <div class="status-pill" id="loadState">尚未載入</div>
+        <button class="secondary" id="todayBtn" onclick="toggleTodayOnly()">只看今日發布</button>
         <button class="secondary" id="reloadBtn" onclick="loadTasks()">重新整理</button>
       </div>
     </div>
@@ -649,6 +650,7 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxCZBPmFVsC4cfBTam-NllY
 let allTasks = [];
 let currentTask = null;
 let isSaving = false;
+let todayOnly = false;
 
 async function loadTasks() {
   setLoading(true, '載入中...');
@@ -962,15 +964,22 @@ async function postApi(payload) {
 }
 
 function filteredTasks() {
-  return allTasks.filter(t =>
-    match('memoFilter', t.memo) &&
-    match('monthFilter', t.publishMonth) &&
-    match('brandFilter', t.brand) &&
-    match('productFilter', t.product) &&
-    match('platformFilter', t.platform) &&
-    match('statusFilter', t.status)
-  );
+  const today = formatDate(localDateStart(new Date()));
+
+  return allTasks.filter(t => {
+    if (todayOnly && t.publishDate !== today) return false;
+
+    return (
+      match('memoFilter', t.memo) &&
+      match('monthFilter', t.publishMonth) &&
+      match('brandFilter', t.brand) &&
+      match('productFilter', t.product) &&
+      match('platformFilter', t.platform) &&
+      match('statusFilter', t.status)
+    );
+  });
 }
+
 
 function updateMetrics(tasks) {
   totalCount.textContent = tasks.length;
@@ -1113,3 +1122,10 @@ loadTasks();
 </script>
 </body>
 </html>
+
+function toggleTodayOnly() {
+  todayOnly = !todayOnly;
+  todayBtn.textContent = todayOnly ? '顯示全部日期' : '只看今日發布';
+  todayBtn.style.background = todayOnly ? 'var(--accent)' : 'rgba(255,255,255,.12)';
+  renderGantt();
+}
