@@ -658,8 +658,10 @@ let currentTask = null;
 let isSaving = false;
 let todayOnly = false;
 let targetSettings = { rows: [], totalsByMonth: {} };
-  const urlParams = new URLSearchParams(location.search);
-  const SESSION_KEY_NAME = 'publishwallAccessKey';
+
+const SESSION_KEY_NAME = 'publishwallAccessKey';
+const urlParams = new URLSearchParams(location.search);
+
 let accessKey =
   urlParams.get('key') ||
   sessionStorage.getItem(SESSION_KEY_NAME) ||
@@ -672,9 +674,11 @@ if (!accessKey) {
 if (accessKey) {
   sessionStorage.setItem(SESSION_KEY_NAME, accessKey);
 }
-  const forcedMemo = urlParams.get('memo') || '';
-  const forcedMemoPrefix = urlParams.get('memoPrefix') || '';
-  const contractorMode = Boolean(forcedMemo || forcedMemoPrefix);
+
+let accessInfo = { internal: true, memo: '', memoPrefix: '' };
+let contractorMode = false;
+
+
 
 async function loadTasks() {
   setLoading(true, '載入中...');
@@ -686,8 +690,6 @@ async function loadTasks() {
     });
     
     if (accessKey) apiParams.set('key', accessKey);
-    if (forcedMemo) apiParams.set('memo', forcedMemo);
-    if (forcedMemoPrefix) apiParams.set('memoPrefix', forcedMemoPrefix);
 
     const res = await fetch(API_URL + '?' + apiParams.toString());
     const json = await res.json();
@@ -696,6 +698,8 @@ async function loadTasks() {
 
     allTasks = (json.data.tasks || []).map(normalizeTask);
     targetSettings = json.data.targets || { rows: [], totalsByMonth: {} };
+    accessInfo = json.data.access || { internal: true, memo: '', memoPrefix: '' };
+    contractorMode = accessInfo.internal === false;
 
     fillFilters(json.data.filters || buildFiltersFromTasks(allTasks));
     applyContractorModeUi();
@@ -703,6 +707,7 @@ async function loadTasks() {
 
     setLoading(false, '已更新 ' + formatTime(new Date()));
   } catch (err) {
+    sessionStorage.removeItem(SESSION_KEY_NAME);
     setLoading(false, '讀取失敗');
     document.getElementById('gantt').innerHTML =
       `<tr><td class="empty">${escapeHtml(err.message)}</td></tr>`;
@@ -712,11 +717,13 @@ function applyContractorModeUi() {
   if (!contractorMode) return;
 
   document.querySelector('.brand-kicker').textContent = 'QOOOQ Contractor Wall';
-  document.querySelector('h1').textContent = forcedMemo || '代發任務牆';
+  document.querySelector('h1').textContent =
+    accessInfo.memo || (accessInfo.memoPrefix ? accessInfo.memoPrefix + '任務牆' : '代發任務牆');
 
   const memoFilter = document.getElementById('memoFilter');
   if (memoFilter) memoFilter.style.display = 'none';
 }
+
 
 
 function normalizeTask(task) {
@@ -1012,10 +1019,10 @@ function filteredTasks() {
   const today = formatDate(localDateStart(new Date()));
 
   return allTasks.filter(t => {
-    if (contractorMode) {
-      if (forcedMemo && String(t.memo || '') !== forcedMemo) return false;
-      if (forcedMemoPrefix && !String(t.memo || '').startsWith(forcedMemoPrefix)) return false;
-    }
+   if (contractorMode) {
+     if (accessInfo.memo && String(t.memo || '') !== accessInfo.memo) return false;
+     if (accessInfo.memoPrefix && !String(t.memo || '').startsWith(accessInfo.memoPrefix)) return false;
+  }
 
     if (todayOnly && t.publishDate !== today) return false;
 
@@ -1249,6 +1256,12 @@ function toggleTodayOnly() {
   renderGantt();
 }
   function calcTargetTotals() {
+      if (targetSettings.fixed) {
+    return {
+      targetExposure: Number(targetSettings.targetExposure || 0),
+      targetBudget: Number(targetSettings.targetBudget || 0)
+    };
+  }
   const selectedMonth = document.getElementById('monthFilter').value;
   const selectedBrand = document.getElementById('brandFilter').value;
   const selectedProduct = document.getElementById('productFilter').value;
