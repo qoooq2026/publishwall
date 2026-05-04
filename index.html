@@ -974,6 +974,21 @@ function filteredTasks() {
   });
 }
 
+function shouldShowInGantt(t) {
+  const dates = nextDays(30);
+  const firstDate = dates[0];
+  const lastDate = dates[dates.length - 1];
+
+  if (t.isNoPublishDate) return true;
+  if (t.status === '已逾期') return true;
+  if (!t.publishDate) return true;
+
+  if (t.publishDate >= firstDate && t.publishDate <= lastDate) {
+    return true;
+  }
+
+  return false;
+}
 
 function updateMetrics(tasks) {
   totalCount.textContent = tasks.length;
@@ -1019,10 +1034,6 @@ function nextDays(count) {
     x.setDate(base.getDate() + i);
     result.push(formatDate(x));
   }
-
-  return result;
-}
-
 
   return result;
 }
@@ -1168,19 +1179,4 @@ loadTasks();
 </body>
 </html>
 
-function shouldShowInGantt(t) {
-  const dates = nextDays(30);
-  const firstDate = dates[0];
-  const lastDate = dates[dates.length - 1];
-
-  if (t.isNoPublishDate) return true;
-  if (t.status === '已逾期') return true;
-  if (!t.publishDate) return true;
-
-  if (t.publishDate >= firstDate && t.publishDate <= lastDate) {
-    return true;
-  }
-
-  return false;
-}
 
