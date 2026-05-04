@@ -658,12 +658,38 @@ let currentTask = null;
 let isSaving = false;
 let todayOnly = false;
 let targetSettings = { rows: [], totalsByMonth: {} };
+  const urlParams = new URLSearchParams(location.search);
+  const SESSION_KEY_NAME = 'publishwallAccessKey';
+let accessKey =
+  urlParams.get('key') ||
+  sessionStorage.getItem(SESSION_KEY_NAME) ||
+  '';
+
+if (!accessKey) {
+  accessKey = window.prompt('請輸入任務牆密碼') || '';
+}
+
+if (accessKey) {
+  sessionStorage.setItem(SESSION_KEY_NAME, accessKey);
+}
+  const forcedMemo = urlParams.get('memo') || '';
+  const forcedMemoPrefix = urlParams.get('memoPrefix') || '';
+  const contractorMode = Boolean(forcedMemo || forcedMemoPrefix);
 
 async function loadTasks() {
   setLoading(true, '載入中...');
 
   try {
-    const res = await fetch(API_URL + '?action=tasks&ts=' + Date.now());
+   const apiParams = new URLSearchParams({
+      action: 'tasks',
+      ts: Date.now()
+    });
+    
+    if (accessKey) apiParams.set('key', accessKey);
+    if (forcedMemo) apiParams.set('memo', forcedMemo);
+    if (forcedMemoPrefix) apiParams.set('memoPrefix', forcedMemoPrefix);
+
+    const res = await fetch(API_URL + '?' + apiParams.toString());
     const json = await res.json();
 
     if (!json.ok) throw new Error(json.error || '讀取失敗');
@@ -672,6 +698,7 @@ async function loadTasks() {
     targetSettings = json.data.targets || { rows: [], totalsByMonth: {} };
 
     fillFilters(json.data.filters || buildFiltersFromTasks(allTasks));
+    applyContractorModeUi();
     renderGantt();
 
     setLoading(false, '已更新 ' + formatTime(new Date()));
@@ -681,6 +708,16 @@ async function loadTasks() {
       `<tr><td class="empty">${escapeHtml(err.message)}</td></tr>`;
   }
 }
+function applyContractorModeUi() {
+  if (!contractorMode) return;
+
+  document.querySelector('.brand-kicker').textContent = 'QOOOQ Contractor Wall';
+  document.querySelector('h1').textContent = forcedMemo || '代發任務牆';
+
+  const memoFilter = document.getElementById('memoFilter');
+  if (memoFilter) memoFilter.style.display = 'none';
+}
+
 
 function normalizeTask(task) {
   const t = {...task};
@@ -815,20 +852,24 @@ async function openDetail(id) {
   }
 }
 async function loadTaskDetail(task) {
-  const url =
-    API_URL +
-    '?action=taskDetail' +
-    '&taskId=' + encodeURIComponent(task.taskId || '') +
-    '&scriptUrl=' + encodeURIComponent(task.scriptUrl || '') +
-    '&sourceSpreadsheetId=' + encodeURIComponent(task.sourceSpreadsheetId || '');
+  const params = new URLSearchParams({
+    action: 'taskDetail',
+    taskId: task.taskId || '',
+    scriptUrl: task.scriptUrl || '',
+    sourceSpreadsheetId: task.sourceSpreadsheetId || '',
+    ts: Date.now()
+  });
 
-  const res = await fetch(url + '&ts=' + Date.now());
+  if (accessKey) params.set('key', accessKey);
+
+  const res = await fetch(API_URL + '?' + params.toString());
   const json = await res.json();
 
   if (!json.ok) throw new Error(json.error || '讀取任務詳情失敗');
 
   return json.data || {};
 }
+
 
 
 function buildDetailText(t) {
@@ -957,6 +998,8 @@ async function saveExposure() {
 }
 
 async function postApi(payload) {
+  if (accessKey) payload.key = accessKey;
+
   const res = await fetch(API_URL, {
     method: 'POST',
     body: JSON.stringify(payload)
@@ -969,6 +1012,11 @@ function filteredTasks() {
   const today = formatDate(localDateStart(new Date()));
 
   return allTasks.filter(t => {
+    if (contractorMode) {
+      if (forcedMemo && String(t.memo || '') !== forcedMemo) return false;
+      if (forcedMemoPrefix && !String(t.memo || '').startsWith(forcedMemoPrefix)) return false;
+    }
+
     if (todayOnly && t.publishDate !== today) return false;
 
     return (
@@ -981,6 +1029,7 @@ function filteredTasks() {
     );
   });
 }
+
 
 function shouldShowInGantt(t) {
   const dates = nextDays(30);
