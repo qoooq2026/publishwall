@@ -141,7 +141,7 @@
 
     .summary {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 10px;
       padding: 18px 22px 0;
       max-width: 1480px;
@@ -571,6 +571,7 @@
     <div class="metric"><b id="doneCount">0</b><span>已發布</span></div>
     <div class="metric"><b id="todoCount">0</b><span>未發布</span></div>
     <div class="metric"><b id="overdueCount">0</b><span>已逾期</span></div>
+    <div class="metric"><b id="exposureSum">0</b><span>總曝光次數</span></div>
   </section>
 
   <main class="board-wrap">
@@ -622,7 +623,6 @@
           <input id="account" placeholder="實施帳號">
           <input id="memoInput" placeholder="Memo">
           <input id="publishDate" type="date">
-          <input id="submittedDisplay" value="尚未投稿" readonly>
         </div>
         <div class="save-row">
           <button id="saveBtn" onclick="savePublish()">儲存送出</button>
@@ -716,12 +716,13 @@ document.querySelectorAll('select').forEach(el => {
 });
 
 function renderGantt() {
-  const tasks = filteredTasks();
-  const dates = nextDays(30);
+    const tasks = filteredTasks();
+    const dates = nextDays(30);
+    const rows = tasks.filter(shouldShowInGantt);
 
-  updateMetrics(tasks);
+    updateMetrics(tasks);
 
-  if (tasks.length === 0) {
+  if (rows.length === 0) {
     document.getElementById('gantt').innerHTML =
       '<tr><td class="empty">目前沒有符合條件的任務</td></tr>';
     return;
@@ -735,7 +736,7 @@ function renderGantt() {
 
   html += '</tr>';
 
-  tasks.forEach(t => {
+  rows.forEach(t => {
     html += `<tr>
       <td class="left">
         <div class="row-title">${escapeHtml(t.memo || '(無 Memo)')}</div>
@@ -790,10 +791,6 @@ async function openDetail(id) {
   account.value = currentTask.account || '';
   memoInput.value = currentTask.memo || '';
   publishDate.value = currentTask.publishDate || '';
-  submittedDisplay.value =
-  String(currentTask.submitted || '').toUpperCase() === 'TRUE'
-    ? '已投稿'
-    : '尚未投稿';
   exposureInput.value = currentTask.totalExposure || '';
 
   detailDialog.showModal();
@@ -911,7 +908,6 @@ async function savePublish() {
       isNoPublishDate: !publishDate.value
     });
 
-    submittedDisplay.value = '已投稿';
     currentTask.status = getPublishStatus(currentTask);
 
     setNotice('saveNotice', '已儲存。', 'ok');
@@ -984,7 +980,19 @@ function updateMetrics(tasks) {
   doneCount.textContent = tasks.filter(t => t.status === '已發布').length;
   todoCount.textContent = tasks.filter(t => t.status === '未發布').length;
   overdueCount.textContent = tasks.filter(t => t.status === '已逾期').length;
+
+  const totalExposure = tasks.reduce((sum, t) => {
+    return sum + parseNumber(t.totalExposure);
+  }, 0);
+
+  exposureSum.textContent = totalExposure.toLocaleString('zh-TW');
 }
+
+function parseNumber(value) {
+  const n = Number(String(value || '').replace(/[^\d.-]/g, ''));
+  return Number.isFinite(n) ? n : 0;
+}
+
 
 function buildFiltersFromTasks(tasks) {
   return {
@@ -1004,12 +1012,17 @@ function match(filterId, value) {
 function nextDays(count) {
   const result = [];
   const base = localDateStart(new Date());
+  base.setDate(base.getDate() - 3);
 
-  for (let i = 0; i <= count; i++) {
+  for (let i = 0; i <= count + 3; i++) {
     const x = new Date(base);
     x.setDate(base.getDate() + i);
     result.push(formatDate(x));
   }
+
+  return result;
+}
+
 
   return result;
 }
@@ -1155,4 +1168,19 @@ loadTasks();
 </body>
 </html>
 
+function shouldShowInGantt(t) {
+  const dates = nextDays(30);
+  const firstDate = dates[0];
+  const lastDate = dates[dates.length - 1];
+
+  if (t.isNoPublishDate) return true;
+  if (t.status === '已逾期') return true;
+  if (!t.publishDate) return true;
+
+  if (t.publishDate >= firstDate && t.publishDate <= lastDate) {
+    return true;
+  }
+
+  return false;
+}
 
