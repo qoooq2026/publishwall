@@ -88,6 +88,9 @@
       display: grid;
       grid-template-columns: repeat(6, minmax(140px, 1fr));
       gap: 10px;
+      padding: 18px 22px 0;
+      max-width: 1480px;
+      margin: 0 auto;
     }
 
     select, input, textarea, button {
@@ -141,7 +144,7 @@
 
     .summary {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
       gap: 10px;
       padding: 18px 22px 0;
       max-width: 1480px;
@@ -572,6 +575,9 @@
     <div class="metric"><b id="todoCount">0</b><span>未發布</span></div>
     <div class="metric"><b id="overdueCount">0</b><span>已逾期</span></div>
     <div class="metric"><b id="exposureSum">0</b><span>總曝光次數</span></div>
+    <div class="metric"><b id="amountSum">0</b><span>收取金額</span></div>
+    <div class="metric"><b id="exposureRate">0%</b><span id="targetExposureText">目標曝光量 0</span></div>
+    <div class="metric"><b id="budgetRate">0%</b><span id="targetBudgetText">目標上限預算 0</span></div>
   </section>
 
   <main class="board-wrap">
@@ -651,6 +657,7 @@ let allTasks = [];
 let currentTask = null;
 let isSaving = false;
 let todayOnly = false;
+let targetSettings = { rows: [], totalsByMonth: {} };
 
 async function loadTasks() {
   setLoading(true, '載入中...');
@@ -662,6 +669,7 @@ async function loadTasks() {
     if (!json.ok) throw new Error(json.error || '讀取失敗');
 
     allTasks = (json.data.tasks || []).map(normalizeTask);
+    targetSettings = json.data.targets || { rows: [], totalsByMonth: {} };
 
     fillFilters(json.data.filters || buildFiltersFromTasks(allTasks));
     renderGantt();
@@ -1000,8 +1008,25 @@ function updateMetrics(tasks) {
     return sum + parseNumber(t.totalExposure);
   }, 0);
 
+  const totalAmount = tasks.reduce((sum, t) => {
+    return sum + parseNumber(t.chargeAmount);
+  }, 0);
+
+  const targets = calcTargetTotals();
+
   exposureSum.textContent = totalExposure.toLocaleString('zh-TW');
+  amountSum.textContent = totalAmount.toLocaleString('zh-TW');
+
+  targetExposureText.textContent =
+    '目標曝光量 ' + targets.targetExposure.toLocaleString('zh-TW');
+
+  targetBudgetText.textContent =
+    '目標上限預算 ' + targets.targetBudget.toLocaleString('zh-TW');
+
+  exposureRate.textContent = formatPercent(totalExposure, targets.targetExposure);
+  budgetRate.textContent = formatPercent(totalAmount, targets.targetBudget);
 }
+
 
 function parseNumber(value) {
   const n = Number(String(value || '').replace(/[^\d.-]/g, ''));
@@ -1174,6 +1199,45 @@ function toggleTodayOnly() {
   todayBtn.style.background = todayOnly ? 'var(--accent)' : 'rgba(255,255,255,.12)';
   renderGantt();
 }
+  function calcTargetTotals() {
+  const selectedMonth = document.getElementById('monthFilter').value;
+  const selectedBrand = document.getElementById('brandFilter').value;
+  const selectedProduct = document.getElementById('productFilter').value;
+
+  const rows = targetSettings.rows || [];
+  const totalsByMonth = targetSettings.totalsByMonth || {};
+
+  const useDetailRows = Boolean(selectedBrand || selectedProduct);
+
+  if (!useDetailRows) {
+    const months = selectedMonth
+      ? [selectedMonth]
+      : Object.keys(totalsByMonth);
+
+    return months.reduce((sum, month) => {
+      const item = totalsByMonth[month] || {};
+      sum.targetExposure += Number(item.targetExposure || 0);
+      sum.targetBudget += Number(item.targetBudget || 0);
+      return sum;
+    }, { targetExposure: 0, targetBudget: 0 });
+  }
+
+  return rows
+    .filter(row => !selectedMonth || row.publishMonth === selectedMonth)
+    .filter(row => !selectedBrand || row.brand === selectedBrand)
+    .filter(row => !selectedProduct || row.product === selectedProduct)
+    .reduce((sum, row) => {
+      sum.targetExposure += Number(row.targetExposure || 0);
+      sum.targetBudget += Number(row.targetBudget || 0);
+      return sum;
+    }, { targetExposure: 0, targetBudget: 0 });
+}
+
+function formatPercent(value, target) {
+  if (!target) return '0%';
+  return ((value / target) * 100).toFixed(1) + '%';
+}
+
 loadTasks();
 </script>
 </body>
