@@ -258,6 +258,10 @@
       background: #f4ead7;
       color: #614a19;
     }
+    .past-done-col {
+      background: #ece8d8;
+      color: #5f4a18;
+   }
 
     .row-title {
       font-weight: 900;
@@ -770,7 +774,9 @@ document.querySelectorAll('select').forEach(el => {
 function renderGantt() {
     const tasks = filteredTasks();
     const dates = nextDays(30);
-    const rows = tasks.filter(shouldShowInGantt);
+    const rows = tasks
+     .filter(shouldShowInGantt)
+     .sort(compareGanttTasks);
 
     updateMetrics(tasks);
 
@@ -780,7 +786,7 @@ function renderGantt() {
     return;
   }
 
-  let html = '<tr><th class="left">Memo / 發佈月 / 品牌 / 商品 / 任務ID / 發布平台</th><th class="special-col">已過期</th><th class="special-col nodate-col">發布日為空</th>';
+let html = '<tr><th class="left">Memo / 發佈月 / 品牌 / 商品 / 任務ID / 發布平台</th><th class="special-col">已過期</th><th class="special-col nodate-col">發布日為空</th><th class="special-col past-done-col">過去已發布</th>';
 
   dates.forEach(d => {
     html += `<th class="date ${isToday(d) ? 'today' : ''}">${formatDateHead(d)}</th>`;
@@ -802,6 +808,8 @@ function renderGantt() {
 
     html += `<td class="special-col">${t.status === '已逾期' ? taskCard(t) : ''}</td>`;
     html += `<td class="special-col nodate-col">${t.isNoPublishDate ? taskCard(t) : ''}</td>`;
+    html += `<td class="special-col past-done-col">${isPastPublished(t, dates[0]) ? taskCard(t) : ''}</td>`;
+
 
     dates.forEach(d => {
       const shouldShow = !t.isNoPublishDate && t.status !== '已逾期' && t.publishDate === d;
@@ -1043,16 +1051,14 @@ function shouldShowInGantt(t) {
   const firstDate = dates[0];
   const lastDate = dates[dates.length - 1];
 
+  if (isPastPublished(t, firstDate)) return true;
   if (t.isNoPublishDate) return true;
   if (t.status === '已逾期') return true;
   if (!t.publishDate) return true;
 
-  if (t.publishDate >= firstDate && t.publishDate <= lastDate) {
-    return true;
-  }
-
-  return false;
+  return t.publishDate >= firstDate && t.publishDate <= lastDate;
 }
+
 
 function updateMetrics(tasks) {
   totalCount.textContent = tasks.length;
@@ -1299,6 +1305,42 @@ function formatPercent(value, target) {
   if (!target) return '0%';
   return ((value / target) * 100).toFixed(1) + '%';
 }
+  function isPastPublished(t, firstDate) {
+  return t.status === '已發布' && t.publishDate && t.publishDate < firstDate;
+}
+
+function compareGanttTasks(a, b) {
+  const ga = ganttSortGroup(a);
+  const gb = ganttSortGroup(b);
+
+  if (ga !== gb) return ga - gb;
+
+  if (ga === 1) {
+    return String(a.publishDate || '').localeCompare(String(b.publishDate || ''));
+  }
+
+  if (ga === 2) {
+    return String(a.publishDate || '').localeCompare(String(b.publishDate || ''));
+  }
+
+  if (ga === 4) {
+    const exposureDiff = parseNumber(b.totalExposure) - parseNumber(a.totalExposure);
+    if (exposureDiff !== 0) return exposureDiff;
+
+    return String(b.publishDate || '').localeCompare(String(a.publishDate || ''));
+  }
+
+  return String(a.taskId || '').localeCompare(String(b.taskId || ''));
+}
+
+function ganttSortGroup(t) {
+  if (t.status === '已逾期') return 1;
+  if (t.status === '未發布' && t.publishDate) return 2;
+  if (t.status === '未發布' && t.isNoPublishDate) return 3;
+  if (t.status === '已發布') return 4;
+  return 9;
+}
+
 
 loadTasks();
 </script>
