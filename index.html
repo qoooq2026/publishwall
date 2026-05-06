@@ -705,7 +705,7 @@ async function loadTasks() {
     accessInfo = json.data.access || { internal: true, memo: '', memoPrefix: '' };
     contractorMode = accessInfo.internal === false;
 
-    fillFilters(json.data.filters || buildFiltersFromTasks(allTasks));
+    fillFilters(buildFiltersFromTasks(allTasks));
     applyContractorModeUi();
     renderGantt();
 
@@ -728,14 +728,28 @@ function applyContractorModeUi() {
   if (memoFilter) memoFilter.style.display = 'none';
 }
 
-
-
 function normalizeTask(task) {
   const t = {...task};
+  t.platform = normalizePlatform(t.platform);
   t.isNoPublishDate = Boolean(t.isNoPublishDate || !t.publishDate);
   t.status = getPublishStatus(t);
   return t;
 }
+function normalizePlatform(value) {
+  const s = String(value || '').trim();
+  const key = s.toLowerCase();
+
+  const map = {
+    tiktok: 'TikTok',
+    reels: 'Reels',
+    shorts: 'Shorts',
+    threads: 'Threads',
+    meta: 'Meta'
+  };
+
+  return map[key] || s;
+}
+
 
 function getPublishStatus(t) {
   const submitted = String(t.submitted || '').toUpperCase() === 'TRUE';
