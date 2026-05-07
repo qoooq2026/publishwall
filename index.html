@@ -963,28 +963,35 @@ async function savePublish() {
   setNotice('saveNotice', '正在寫回管理表...', '');
 
   try {
-    const json = await postApi({
-      action: 'updatePublish',
-      sourceSpreadsheetId: currentTask.sourceSpreadsheetId,
-      sourceSheetName: currentTask.sourceSheetName,
-      sourceRow: currentTask.sourceRow,
-      publishLink: publishLink.value,
-      account: account.value,
-      memo: memoInput.value,
-      publishDate: publishDate.value,
-      submitted: 'TRUE'
-    });
+const shouldMarkSubmitted = Boolean(publishLink.value.trim());
+
+const json = await postApi({
+  action: 'updatePublish',
+  sourceSpreadsheetId: currentTask.sourceSpreadsheetId,
+  sourceSheetName: currentTask.sourceSheetName,
+  sourceRow: currentTask.sourceRow,
+  publishLink: publishLink.value,
+  account: account.value,
+  memo: memoInput.value,
+  publishDate: publishDate.value,
+  submitted: shouldMarkSubmitted ? 'TRUE' : ''
+});
 
     if (!json.ok) throw new Error(json.error || '儲存失敗');
 
-    Object.assign(currentTask, {
-      publishLink: publishLink.value,
-      account: account.value,
-      memo: memoInput.value,
-      publishDate: publishDate.value,
-      submitted: 'TRUE',
-      isNoPublishDate: !publishDate.value
-    });
+   const updatedTask = {
+  publishLink: publishLink.value,
+  account: account.value,
+  memo: memoInput.value,
+  publishDate: publishDate.value,
+  isNoPublishDate: !publishDate.value
+};
+
+if (shouldMarkSubmitted) {
+  updatedTask.submitted = 'TRUE';
+}
+
+Object.assign(currentTask, updatedTask);
 
     currentTask.status = getPublishStatus(currentTask);
 
