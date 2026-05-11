@@ -626,19 +626,34 @@
     </div>
 
     <div class="section-stack">
-      <div class="box">
-        <h3>開始發布</h3>
-        <div class="form-grid">
-          <input id="publishLink" class="full" placeholder="發布連結">
-          <input id="account" placeholder="實施帳號">
-          <input id="memoInput" placeholder="Memo">
-          <input id="publishDate" type="date">
-        </div>
-        <div class="save-row">
-          <button id="saveBtn" onclick="savePublish()">儲存送出</button>
-          <span id="saveNotice" class="notice"></span>
-        </div>
-      </div>
+<div class="box">
+  <h3>開始發布</h3>
+  <div class="form-grid">
+    <input id="publishLink" class="full" placeholder="發布連結">
+    <input id="account" placeholder="實施帳號">
+    <input id="memoInput" placeholder="Memo">
+    <input id="publishDate" type="date">
+  </div>
+  <div class="save-row">
+    <button id="saveBtn" onclick="savePublish()">儲存送出</button>
+    <span id="saveNotice" class="notice"></span>
+  </div>
+</div>
+
+<div class="box">
+  <h3>裂變任務</h3>
+  <div class="form-grid">
+    <select id="variantCount" class="full">
+      <option value="1">新增到裂變1</option>
+      <option value="2">新增到裂變2</option>
+    </select>
+  </div>
+  <div class="save-row">
+    <button id="variantBtn" onclick="createVariantRows()">新增裂變</button>
+    <span id="variantNotice" class="notice"></span>
+  </div>
+</div>
+
 
       <div class="box">
         <h3>曝光數據</h3>
@@ -1200,6 +1215,7 @@ function setNotice(id, text, type) {
 function clearNotices() {
   setNotice('saveNotice', '', '');
   setNotice('exposureNotice', '', '');
+  setNotice('variantNotice', '', '');
 }
 
 function unique(values) {
@@ -1361,6 +1377,68 @@ function ganttSortGroup(t) {
   if (t.status === '已發布') return 4;
   return 9;
 }
+  async function createVariantRows() {
+  if (!currentTask || isSaving) return;
+
+  isSaving = true;
+  setButtonLoading('variantBtn', true, '新增中...');
+  setNotice('variantNotice', '正在新增裂變任務...', '');
+
+  try {
+    const json = await postApi({
+      action: 'createVariantPublishRows',
+      sourceSpreadsheetId: currentTask.sourceSpreadsheetId,
+      sourceSheetName: currentTask.sourceSheetName,
+      sourceRow: currentTask.sourceRow,
+      taskId: currentTask.taskId,
+      variantCount: document.getElementById('variantCount').value
+    });
+
+    if (!json.ok) throw new Error(json.error || '新增裂變失敗');
+
+    const created = json.data.created || [];
+    const skipped = json.data.skipped || [];
+
+created.forEach(item => {
+  const t = normalizeTask({
+    ...currentTask,
+    id: item.id,
+    taskId: item.taskId,
+    sourceSpreadsheetId: item.sourceSpreadsheetId,
+    sourceSheetName: item.sourceSheetName,
+    sourceRow: item.sourceRow,
+    submitted: 'FALSE',
+    publishDate: '',
+    account: '',
+    memo: '',
+    publishLink: '',
+    totalExposure: '',
+    chargeAmount: '0',
+    isNoPublishDate: true
+  });
+
+  allTasks.push(t);
+  currentTask = t;
+});
+
+    fillFilters(buildFiltersFromTasks(allTasks));
+    renderGantt();
+
+    if (created.length > 0) {
+      setNotice('variantNotice', '已新增 ' + created.length + ' 筆裂變任務。', 'ok');
+    } else if (skipped.length > 0) {
+      setNotice('variantNotice', '裂變任務已存在，沒有重複新增。', 'ok');
+    } else {
+      setNotice('variantNotice', '沒有新增資料。', '');
+    }
+  } catch (err) {
+    setNotice('variantNotice', '新增失敗：' + err.message, 'err');
+  } finally {
+    setButtonLoading('variantBtn', false, '新增裂變');
+    isSaving = false;
+  }
+}
+
 
 
 loadTasks();
