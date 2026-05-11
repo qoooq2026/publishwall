@@ -559,6 +559,7 @@
       <div class="actions">
         <div class="status-pill" id="loadState">尚未載入</div>
         <button class="secondary" id="todayBtn" onclick="toggleTodayOnly()">只看今日發布</button>
+        <button class="secondary" id="previous3Btn" onclick="togglePrevious3Only()">只看前三日</button>
         <button class="secondary" id="reloadBtn" onclick="loadTasks()">重新整理</button>
       </div>
     </div>
@@ -676,6 +677,7 @@ let allTasks = [];
 let currentTask = null;
 let isSaving = false;
 let todayOnly = false;
+let previous3Only = false;
 let targetSettings = { rows: [], totalsByMonth: {} };
 
 const SESSION_KEY_NAME = 'publishwallAccessKey';
@@ -1069,6 +1071,8 @@ function filteredTasks() {
   }
 
     if (todayOnly && t.publishDate !== today) return false;
+    if (previous3Only && !isInPrevious3Days(t.publishDate)) return false;
+
 
     return (
       match('memoFilter', t.memo) &&
@@ -1292,12 +1296,30 @@ function escapeAttr(s) {
   return escapeHtml(s).replace(/`/g, '&#96;');
 }
 
-function toggleTodayOnly() {
-  todayOnly = !todayOnly;
+function updateDateFilterButtons() {
   todayBtn.textContent = todayOnly ? '顯示全部日期' : '只看今日發布';
   todayBtn.style.background = todayOnly ? 'var(--accent)' : 'rgba(255,255,255,.12)';
+
+  previous3Btn.textContent = previous3Only ? '顯示全部日期' : '只看前三日';
+  previous3Btn.style.background = previous3Only ? 'var(--accent)' : 'rgba(255,255,255,.12)';
+}
+
+function toggleTodayOnly() {
+  todayOnly = !todayOnly;
+  if (todayOnly) previous3Only = false;
+
+  updateDateFilterButtons();
   renderGantt();
 }
+
+function togglePrevious3Only() {
+  previous3Only = !previous3Only;
+  if (previous3Only) todayOnly = false;
+
+  updateDateFilterButtons();
+  renderGantt();
+}
+
   function calcTargetTotals() {
       if (targetSettings.fixed) {
     return {
@@ -1459,6 +1481,17 @@ if (lastCreatedTask) {
   }
 }
 
+function isInPrevious3Days(value) {
+  if (!value) return false;
+
+  const start = localDateStart(new Date());
+  start.setDate(start.getDate() - 3);
+
+  const end = localDateStart(new Date());
+  end.setDate(end.getDate() - 1);
+
+  return String(value) >= formatDate(start) && String(value) <= formatDate(end);
+}
 
 
 loadTasks();
