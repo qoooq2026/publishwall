@@ -1399,6 +1399,8 @@ function ganttSortGroup(t) {
     const created = json.data.created || [];
     const skipped = json.data.skipped || [];
 
+let lastCreatedTask = null;
+
 created.forEach(item => {
   const t = normalizeTask({
     ...currentTask,
@@ -1418,8 +1420,26 @@ created.forEach(item => {
   });
 
   allTasks.push(t);
-  currentTask = t;
+  lastCreatedTask = t;
 });
+
+if (lastCreatedTask) {
+  currentTask = lastCreatedTask;
+
+  detailTitle.textContent = currentTask.taskId || '任務詳情';
+  detailMeta.textContent =
+    `${currentTask.memo || '無 Memo'}｜${currentTask.publishMonth || '-'}｜${currentTask.brand || '-'}｜${currentTask.product || '-'}｜${currentTask.platform || '-'}`;
+
+  publishLink.value = '';
+  account.value = '';
+  memoInput.value = '';
+  publishDate.value = '';
+  exposureInput.value = '';
+
+  detailBody.textContent = buildDetailText(currentTask);
+  mediaList.innerHTML = buildMediaLinks(currentTask);
+}
+
 
     fillFilters(buildFiltersFromTasks(allTasks));
     renderGantt();
