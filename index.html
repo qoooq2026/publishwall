@@ -559,7 +559,7 @@
       <div class="actions">
         <div class="status-pill" id="loadState">尚未載入</div>
         <button class="secondary" id="todayBtn" onclick="toggleTodayOnly()">只看今日發布</button>
-        <button class="secondary" id="previous3Btn" onclick="togglePrevious3Only()">只看前三日</button>
+        <button class="secondary" id="previous3Btn" onclick="togglePrevious3Only()">只看前3日</button>
         <button class="secondary" id="reloadBtn" onclick="loadTasks()">重新整理</button>
       </div>
     </div>
@@ -782,8 +782,8 @@ function fillFilters(filters) {
   fillSelect('monthFilter', '發佈月 全部', filters.publishMonth);
   fillSelect('brandFilter', '品牌 全部', filters.brand);
   fillSelect('productFilter', '商品 全部', filters.product);
-  fillSelect('platformFilter', '發布平台 全部', filters.platform);
-  fillSelect('statusFilter', '狀態 全部', ['已發布', '已逾期', '未發布']);
+  fillIncludeExcludeSelect('platformFilter', '發布平台 全部', filters.platform);
+  fillIncludeExcludeSelect('statusFilter', '狀態 全部', ['已發布', '已逾期', '未發布']);
 }
 
 function fillSelect(id, label, values = []) {
@@ -801,6 +801,19 @@ function fillSelect(id, label, values = []) {
 document.querySelectorAll('select').forEach(el => {
   el.addEventListener('change', renderGantt);
 });
+  function fillIncludeExcludeSelect(id, label, values = []) {
+  const el = document.getElementById(id);
+  const old = el.value;
+  const unique = [...new Set((values || []).filter(Boolean))].sort();
+
+  el.innerHTML =
+    `<option value="">${label}</option>` +
+    unique.map(v => `<option value="include:${escapeAttr(v)}">只看 ${escapeHtml(v)}</option>`).join('') +
+    unique.map(v => `<option value="exclude:${escapeAttr(v)}">排除 ${escapeHtml(v)}</option>`).join('');
+
+  if ([...el.options].some(opt => opt.value === old)) el.value = old;
+}
+
 
 function renderGantt() {
     const tasks = filteredTasks();
@@ -1148,8 +1161,21 @@ function buildFiltersFromTasks(tasks) {
 
 function match(filterId, value) {
   const selected = document.getElementById(filterId).value;
-  return !selected || selected === String(value || '');
+  if (!selected) return true;
+
+  const actual = String(value || '');
+
+  if (selected.startsWith('include:')) {
+    return actual === selected.replace(/^include:/, '');
+  }
+
+  if (selected.startsWith('exclude:')) {
+    return actual !== selected.replace(/^exclude:/, '');
+  }
+
+  return selected === actual;
 }
+
 
 function nextDays(count) {
   const result = [];
