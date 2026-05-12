@@ -696,7 +696,7 @@ if (accessKey) {
   sessionStorage.setItem(SESSION_KEY_NAME, accessKey);
 }
 
-let accessInfo = { internal: true, memo: '', memoPrefix: '' };
+let accessInfo = { internal: true, memo: '', memoPrefix: '', memoPrefixes: [] };
 let contractorMode = false;
 
 
@@ -719,7 +719,7 @@ async function loadTasks() {
 
     allTasks = (json.data.tasks || []).map(normalizeTask);
     targetSettings = json.data.targets || { rows: [], totalsByMonth: {} };
-    accessInfo = json.data.access || { internal: true, memo: '', memoPrefix: '' };
+    accessInfo = json.data.access || { internal: true, memo: '', memoPrefix: '', memoPrefixes: [] };
     contractorMode = accessInfo.internal === false;
 
     fillFilters(buildFiltersFromTasks(allTasks));
@@ -738,8 +738,13 @@ function applyContractorModeUi() {
   if (!contractorMode) return;
 
   document.querySelector('.brand-kicker').textContent = 'QOOOQ Contractor Wall';
-  document.querySelector('h1').textContent =
-    accessInfo.memo || (accessInfo.memoPrefix ? accessInfo.memoPrefix + '任務牆' : '代發任務牆');
+  const prefixLabel = Array.isArray(accessInfo.memoPrefixes) && accessInfo.memoPrefixes.length
+  ? accessInfo.memoPrefixes.join(' / ')
+  : accessInfo.memoPrefix;
+
+document.querySelector('h1').textContent =
+  accessInfo.memo || (prefixLabel ? prefixLabel + '任務牆' : '代發任務牆');
+
 
   const memoFilter = document.getElementById('memoFilter');
   if (memoFilter) memoFilter.style.display = 'none';
@@ -1073,15 +1078,27 @@ async function postApi(payload) {
 
   return res.json();
 }
+function memoAllowedByAccessInfo(memo) {
+  const value = String(memo || '');
+
+  if (accessInfo.memo && value !== accessInfo.memo) return false;
+
+  const prefixes = Array.isArray(accessInfo.memoPrefixes) && accessInfo.memoPrefixes.length
+    ? accessInfo.memoPrefixes
+    : (accessInfo.memoPrefix ? [accessInfo.memoPrefix] : []);
+
+  if (prefixes.length > 0) {
+    return prefixes.some(prefix => value.startsWith(prefix));
+  }
+
+  return true;
+}
 
 function filteredTasks() {
   const today = formatDate(localDateStart(new Date()));
 
   return allTasks.filter(t => {
-   if (contractorMode) {
-     if (accessInfo.memo && String(t.memo || '') !== accessInfo.memo) return false;
-     if (accessInfo.memoPrefix && !String(t.memo || '').startsWith(accessInfo.memoPrefix)) return false;
-  }
+   if (contractorMode && !memoAllowedByAccessInfo(t.memo)) return false;
 
     if (todayOnly && t.publishDate !== today) return false;
     if (previous3Only && !isInPrevious3Days(t.publishDate)) return false;
