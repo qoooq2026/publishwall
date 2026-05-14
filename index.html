@@ -462,7 +462,12 @@
       font-weight: 700;
       text-decoration: none;
     }
-
+     .publish-link-open {
+       color: var(--green);
+       font-weight: 700;
+       text-decoration: none;
+       padding: 4px 2px;
+    }
     .form-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -631,6 +636,7 @@
   <h3>開始發布</h3>
   <div class="form-grid">
     <input id="publishLink" class="full" placeholder="發布連結">
+    <a id="publishLinkOpen" class="publish-link-open full" href="#" target="_blank" rel="noopener" style="display:none;">開啟發布連結</a>
     <input id="account" placeholder="實施帳號">
     <input id="memoInput" placeholder="Memo">
     <input id="publishDate" type="date">
@@ -855,9 +861,10 @@ let html = '<tr><th class="left">Memo / 發佈月 / 品牌 / 商品 / 任務ID /
         </div>
       </td>`;
 
-    html += `<td class="special-col">${t.status === '已逾期' ? taskCard(t) : ''}</td>`;
-    html += `<td class="special-col nodate-col">${t.isNoPublishDate ? taskCard(t) : ''}</td>`;
-    html += `<td class="special-col past-done-col">${isPastPublished(t, dates[0]) ? taskCard(t) : ''}</td>`;
+html += `<td class="special-col">${t.status === '已逾期' ? taskCard(t) : ''}</td>`;
+html += `<td class="special-col nodate-col">${t.isNoPublishDate ? taskCard(t) : ''}</td>`;
+html += `<td class="special-col past-done-col">${isPastPublished(t, dates[0]) ? taskCard(t) : ''}</td>`;
+
 
 
     dates.forEach(d => {
@@ -878,9 +885,15 @@ function taskCard(t) {
     t.isNoPublishDate ? 'nodate' :
     '';
 
+  const exposure = parseNumber(t.totalExposure);
+  const exposureHtml = exposure > 0
+    ? `<div class="task-sub">曝光 ${exposure.toLocaleString('zh-TW')}</div>`
+    : '';
+
   return `<div class="task ${statusClass}" onclick="openDetail('${escapeAttr(t.id)}')">
     <div class="task-title">${escapeHtml(t.platform || '任務')}</div>
     <div class="task-sub">${escapeHtml(t.publishDate || '發布日為空')}｜${escapeHtml(t.status)}</div>
+    ${exposureHtml}
   </div>`;
 }
 async function openDetail(id) {
@@ -897,6 +910,7 @@ async function openDetail(id) {
   mediaList.innerHTML = '<div class="muted">正在讀取素材...</div>';
 
   publishLink.value = currentTask.publishLink || '';
+  updatePublishLinkOpen();
   account.value = currentTask.account || '';
   memoInput.value = currentTask.memo || '';
   publishDate.value = currentTask.publishDate || '';
@@ -1078,6 +1092,19 @@ async function postApi(payload) {
 
   return res.json();
 }
+  function updatePublishLinkOpen() {
+  const el = document.getElementById('publishLinkOpen');
+  const url = String(document.getElementById('publishLink').value || '').trim();
+
+  if (/^https?:\/\//i.test(url)) {
+    el.href = url;
+    el.style.display = 'inline-block';
+  } else {
+    el.removeAttribute('href');
+    el.style.display = 'none';
+  }
+}
+
 function memoAllowedByAccessInfo(memo) {
   const value = String(memo || '');
 
@@ -1496,6 +1523,7 @@ if (lastCreatedTask) {
     `${currentTask.memo || '無 Memo'}｜${currentTask.publishMonth || '-'}｜${currentTask.brand || '-'}｜${currentTask.product || '-'}｜${currentTask.platform || '-'}`;
 
   publishLink.value = '';
+  updatePublishLinkOpen();
   account.value = '';
   memoInput.value = '';
   publishDate.value = '';
@@ -1536,7 +1564,7 @@ function isInPrevious3Days(value) {
   return String(value) >= formatDate(start) && String(value) <= formatDate(end);
 }
 
-
+document.getElementById('publishLink').addEventListener('input', updatePublishLinkOpen);
 loadTasks();
 </script>
 </body>
