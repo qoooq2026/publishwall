@@ -930,6 +930,10 @@ async function openDetail(id) {
   }
 }
 async function loadTaskDetail(task) {
+  if (!task.scriptUrl) {
+    throw new Error('這筆任務沒有「前往腳本」連結，請檢查來源管理表該列的前往腳本欄位。');
+  }
+
   const params = new URLSearchParams({
     action: 'taskDetail',
     taskId: task.taskId || '',
@@ -941,12 +945,20 @@ async function loadTaskDetail(task) {
   if (accessKey) params.set('key', accessKey);
 
   const res = await fetch(API_URL + '?' + params.toString());
-  const json = await res.json();
+  const text = await res.text();
+
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch (err) {
+    throw new Error('API 沒有回傳 JSON，可能是 Apps Script 權限、部署或後端錯誤。');
+  }
 
   if (!json.ok) throw new Error(json.error || '讀取任務詳情失敗');
 
   return json.data || {};
 }
+
 
 
 
