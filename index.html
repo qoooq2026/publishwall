@@ -885,10 +885,10 @@ function taskCard(t) {
     t.isNoPublishDate ? 'nodate' :
     '';
 
-  const exposure = parseNumber(t.totalExposure);
-  const exposureHtml = exposure > 0
-    ? `<div class="task-sub">曝光 ${exposure.toLocaleString('zh-TW')}</div>`
-    : '';
+const exposure = parseNumber(t.totalExposure);
+const exposureHtml = exposure > 0
+  ? `<div class="task-sub">曝光 ${exposure.toLocaleString('zh-TW')}</div>`
+  : '';
 
   return `<div class="task ${statusClass}" onclick="openDetail('${escapeAttr(t.id)}')">
     <div class="task-title">${escapeHtml(t.platform || '任務')}</div>
@@ -1200,8 +1200,22 @@ function updateMetrics(tasks) {
 
 
 function parseNumber(value) {
-  const n = Number(String(value || '').replace(/[^\d.-]/g, ''));
+  const raw = String(value || '').trim();
+
+  if (isDateLikeValue(raw)) return 0;
+
+  const n = Number(raw.replace(/[^\d.-]/g, ''));
   return Number.isFinite(n) ? n : 0;
+}
+
+function isDateLikeValue(value) {
+  const s = String(value || '').trim();
+
+  return (
+    /^\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}$/.test(s) ||
+    /^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}$/.test(s) ||
+    /^\d{1,2}月\d{1,2}日$/.test(s)
+  );
 }
 
 
